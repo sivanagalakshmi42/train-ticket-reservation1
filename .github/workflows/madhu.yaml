@@ -82,7 +82,7 @@ jobs:
           curl -v -u "$USER:$PASS" --fail --show-error -T "$WAR_FILE" \
             "$URL/deploy?path=/train-ticket-reservation&update=true"
             
-  deploy-Prepod:
+  deploy-prepod:
     needs: deploy-test
     runs-on: ubuntu-latest
   steps:
@@ -91,12 +91,12 @@ jobs:
          name: war-file 
      - name: 🚀 Deploy to PRE-POD
         env:
-          URL: ${{ secrets.TOMCAT_URL_prepod }}
-          USER: ${{ secrets.TOMCAT_USER_Prepod }}
-          PASS: ${{ secrets.TOMCAT_PASS_Prepod}}
+          URL: ${{ secrets.TOMCAT_URL_PREPOD }}
+          USER: ${{ secrets.TOMCAT_USER_PREPOD }}
+          PASS: ${{ secrets.TOMCAT_PASS_PREPOD}}
         run: |
           WAR_FILE=$(ls *.war | head -n 1)
-          echo "Deploying $WAR_FILE to PRE_POD ($URL)"
+          echo "Deploying $WAR_FILE to PREPOD ($URL)"
           curl -v -u "$USER:$PASS" "$URL/list"
           curl -v -u "$USER:$PASS" --fail --show-error -T "$WAR_FILE" \
             "$URL/deploy?path=/train-ticket-reservation&update=true"
