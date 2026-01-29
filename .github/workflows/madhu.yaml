@@ -23,14 +23,16 @@ jobs:
       - name: 🔨 Build with Maven
         run: mvn clean package -DskipTests
 
-      - name: 🗂 Find WAR file
-        run: echo "WAR_FILE=$(ls target/*.war | head -n 1)" >> $GITHUB_ENV
-
-      - name: ⬆ Upload WAR artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: war-file
-          path: ${{ env.WAR_FILE }}
+      - name: Deploy WAR to tomcat 
+        run: | 
+          WAR_FILE=target/TrainBook-1.0.0-SNAPSHOT.war
+          echo "Deploying WAR file: $WAR_FILE
+          ls -l target
+          curl --fail --upload "$WAR_FILE" "$TOMCAT_URL/deploy?path=/train-ticket-reservation&update=true" --user $TOMCAT_USERNAME:$TOMCAT_PASSWORD
+        env:
+          TOMCAT_URL: ${{ secrets.TOMCAT_URL }}
+          TOMCAT_USERNAME: ${{secrets.TOMCAT_USERNAME }}
+          TOMCAT_PASSWORD: ${{ secrets.TOMCAT_PASSWORD }}
 
       - name: SonarQube Analysis
         run: |
