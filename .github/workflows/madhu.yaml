@@ -51,7 +51,7 @@ jobs:
           EOF
       - name: Upload Artifact to Nexus
         run: mvn deploy -DaltDeploymentRepository=nexus::default::${{ secrets.NEXUS_URL }}
-deploy-dev:
+  deploy-dev:
     needs: build
     runs-on: ubuntu-latest
 
@@ -74,7 +74,4 @@ deploy-dev:
 
           echo "📌 Deploying WAR file..."
           curl -v -u "$USER:$PASS" --fail --show-error -T "$WAR_FILE" \
-            "$URL/deploy?path=/train-ticket-reservation&update=true"     
-         
- " \
-            "$URL/deploy?path=/train-ticket-reservation&update=true"
+            "$URL/deploy?path=/train-ticket-reservation&update=true" 
