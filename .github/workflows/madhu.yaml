@@ -50,7 +50,7 @@ jobs:
           </settings> 
           EOF
       - name: Upload Artifact to Nexus
-        run: mvn deploy -DaltDeploymentRepository=nexus::default::${{ secrets.NEXUS_URL }}
+        run: mvn deploy -DaltDeploymentRepository=nexus::default::${{ secrets.NEXUS_REPO_URL }}
   deploy-dev:
     needs: build
     runs-on: ubuntu-latest
