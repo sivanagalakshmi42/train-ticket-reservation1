@@ -1,39 +1,57 @@
 name: Build and Deploy train-ticket-reservation
 
-on:
+on: 
   push:
-    branches:
-      - master
+    branches: master
   workflow_dispatch:
   
 jobs:
   build:
     runs-on: ubuntu-latest
-
     steps:
-      - name: 📥 Checkout code
+      - name: checkout code
         uses: actions/checkout@v4
-
-      - name: ☕ Set up Java
+      - name: set up java
         uses: actions/setup-java@v4
         with:
           distribution: 'temurin'
-          java-version: '17'
-
-      - name: 🔨 Build with Maven
+          java-version: '17'   # Updated Java version
+      
+      - name: Build with maven
         run: mvn clean package -DskipTests
-
-      - name: 🗂 Find WAR file
-        run: echo "WAR_FILE=$(ls target/*.war | head -n 1)" >> $GITHUB_ENV
-
-      - name: ⬆ Upload WAR artifact
+      - name: Find WAR file
+        run: echo "WAR_file=$(ls target/*.war | head -n 1)" >> $GITHUB_ENV
+     
+      - name: Upload WAR artifact
         uses: actions/upload-artifact@v4
         with:
           name: war-file
-          path: ${{ env.WAR_FILE }}
-
+          path: $(( env.WAR_FILE))
       
-  deploy-dev:
+      - name: SonarQube Analysis
+        run: |
+          mvn sonar:sonar \
+            -Dsonar.projectKey=train-ticket-reservation \
+            -Dsonar.host.url="${{ secrets.SONAR_HOST_URL }}" \
+            -Dsonar.login="${{ secrets.SONAR_TOKEN }}"
+            
+      - name: Configure Maven settings.xml for Nexus
+        run: |
+          mkdir -p ~/.m2
+          cat <<EOF > ~/.m2/settings.xml
+          <settings>
+           <servers>
+            <server>
+             <id>nexus</id>
+             <username>${{ secrets.NEXUS_USERNAME }}</username> 
+             <password>${{ secrets.NEXUS_PASSWORD}}</password> 
+            </server> 
+           </servers> 
+          </settings> 
+          EOF
+      - name: Upload Artifact to Nexus
+        run: mvn deploy -DaltDeploymentRepository=nexus::default::${{ secrets.NEXUS_URL }}
+ deploy-dev:
     needs: build
     runs-on: ubuntu-latest
 
@@ -56,72 +74,7 @@ jobs:
 
           echo "📌 Deploying WAR file..."
           curl -v -u "$USER:$PASS" --fail --show-error -T "$WAR_FILE" \
-            "$URL/deploy?path=/train-ticket-reservation&update=true"
+            "$URL/deploy?path=/train-ticket-reservation&update=true"     
          
-  deploy-test:
-   needs: deploy-dev
-   runs-on: ubuntu-latest
-
-   steps:
-      - uses: actions/download-artifact@v4
-        with:
-          name: war-file
-            
-      - name: 🚀 Deploy to TEST
-        env:
-          URL: ${{ secrets.TOMCAT_URL_TEST }}
-          USER: ${{ secrets.TOMCAT_USER_TEST }}
-          PASS: ${{ secrets.TOMCAT_PASS_TEST}}
-        run: |
-          WAR_FILE=$(ls *.war | head -n 1)
-          echo "Deploying $WAR_FILE to TEST ($URL)"
-
-          echo "📌 Checking Tomcat Manager access..."
-          curl -v -u "$USER:$PASS" "$URL/list"
-          echo "📌 Deploying WAR file..."
-          curl -v -u "$USER:$PASS" --fail --show-error -T "$WAR_FILE" \
-            "$URL/deploy?path=/train-ticket-reservation&update=true"
-            
-  deploy-prepod:
-    needs: deploy-test
-    runs-on: ubuntu-latest
-    
-    steps:
-     - uses: actions/download-artifact@v4
-       with:
-         name: war-file 
-     - name: 🚀 Deploy to PRE-POD
-       env:
-          URL: ${{ secrets.TOMCAT_URL_PREPOD }}
-          USER: ${{ secrets.TOMCAT_USER_PREPOD }}
-          PASS: ${{ secrets.TOMCAT_PASS_PREPOD}}
-       run: |
-          WAR_FILE=$(ls *.war | head -n 1)
-          echo "Deploying $WAR_FILE to PREPOD ($URL)"
-          curl -v -u "$USER:$PASS" "$URL/list"
-          curl -v -u "$USER:$PASS" --fail --show-error -T "$WAR_FILE" \
-            "$URL/deploy?path=/train-ticket-reservation&update=true"
-            
-  deploy-prod:
-     needs: deploy-prepod
-     runs-on: ubuntu-latest
-     steps:
-      - uses: actions/download-artifact@v4
-        with:
-          name: war-file
-          
-      - name: 🚀 Deploy to pod
-        env:
-          URL: ${{ secrets.TOMCAT_URL_POD }}
-          USER: ${{ secrets.TOMCAT_USER_POD }}
-          PASS: ${{ secrets.TOMCAT_PASS_POD }}
-        run: |
-          WAR_FILE=$(ls *.war | head -n 1)
-          echo "Deploying $WAR_FILE to PROD ($URL)"
-
-          echo "📌 Checking Tomcat Manager access..."
-          curl -v -u "$USER:$PASS" "$URL/list"
-
-          echo "📌 Deploying WAR file..."
-          curl -v -u "$USER:$PASS" --fail --show-error -T "$WAR_FILE" \
+ " \
             "$URL/deploy?path=/train-ticket-reservation&update=true"
